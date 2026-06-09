@@ -17,10 +17,10 @@ const ai = new GoogleGenAI({
 });
 
 // =====================
-// 🟢 HOME ROUTE (حل Cannot GET /)
+// 🟢 HOME ROUTE
 // =====================
 app.get("/", (req, res) => {
-  res.send("N-Calorie Sportif is running 🚀");
+  res.status(200).send("N-Calorie Sportif is running 🚀");
 });
 
 // =====================
@@ -29,6 +29,12 @@ app.get("/", (req, res) => {
 app.post("/analyze-food", async (req, res) => {
   try {
     const { imageBase64 } = req.body;
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({
+        error: "Missing GEMINI_API_KEY in environment variables"
+      });
+    }
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
@@ -41,11 +47,11 @@ app.post("/analyze-food", async (req, res) => {
         },
         {
           text: `
-أنت خبير تغذية.
+أنت خبير تغذية محترف.
 
 حلل الطعام الموجود في الصورة.
 
-أرجع فقط JSON صحيح بدون أي شرح:
+أرجع فقط JSON بدون أي شرح:
 
 {
   "food": "اسم الطعام",
@@ -59,9 +65,6 @@ app.post("/analyze-food", async (req, res) => {
       ]
     });
 
-    // =====================
-    // استخراج النص بشكل آمن
-    // =====================
     let text = response.text;
 
     if (typeof text === "function") {
@@ -81,7 +84,7 @@ app.post("/analyze-food", async (req, res) => {
       result = JSON.parse(text);
     } catch (err) {
       result = {
-        food: "لم يتم التعرف بشكل دقيق",
+        food: "لم يتم التعرف بدقة",
         calories: 0,
         protein: 0,
         carbs: 0,
@@ -95,6 +98,7 @@ app.post("/analyze-food", async (req, res) => {
     console.error("ERROR:", error);
 
     res.status(500).json({
+      error: "Server error",
       food: "خطأ في التحليل",
       calories: 0,
       protein: 0,
@@ -105,10 +109,10 @@ app.post("/analyze-food", async (req, res) => {
 });
 
 // =====================
-// Server Start (Render ready)
+// SERVER (Render FIXED)
 // =====================
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log("N-Calorie Sportif running on port", PORT);
 });
