@@ -1,4 +1,3 @@
-
 require("dotenv").config();
 
 const express = require("express");
@@ -10,10 +9,23 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "20mb" }));
 
+// =====================
+// Gemini AI Setup
+// =====================
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
 
+// =====================
+// 🟢 HOME ROUTE (حل Cannot GET /)
+// =====================
+app.get("/", (req, res) => {
+  res.send("N-Calorie Sportif is running 🚀");
+});
+
+// =====================
+// 🟢 ANALYZE FOOD API
+// =====================
 app.post("/analyze-food", async (req, res) => {
   try {
     const { imageBase64 } = req.body;
@@ -33,44 +45,43 @@ app.post("/analyze-food", async (req, res) => {
 
 حلل الطعام الموجود في الصورة.
 
-أجب بالعربية.
-
-أرجع فقط JSON بهذا الشكل:
+أرجع فقط JSON صحيح بدون أي شرح:
 
 {
-  "food":"اسم الطعام",
-  "calories":0,
-  "protein":0,
-  "carbs":0,
-  "fat":0
+  "food": "اسم الطعام",
+  "calories": 0,
+  "protein": 0,
+  "carbs": 0,
+  "fat": 0
 }
 `
         }
       ]
     });
 
-    let text = "";
+    // =====================
+    // استخراج النص بشكل آمن
+    // =====================
+    let text = response.text;
 
-    if (typeof response.text === "function") {
-      text = response.text();
-    } else {
-      text = response.text || "";
+    if (typeof text === "function") {
+      text = text();
     }
 
-    text = String(text)
+    text = String(text || "")
       .replace(/```json/gi, "")
       .replace(/```/g, "")
       .trim();
 
-    console.log("Gemini:", text);
+    console.log("Gemini Response:", text);
 
     let result;
 
     try {
       result = JSON.parse(text);
-    } catch {
+    } catch (err) {
       result = {
-        food: text,
+        food: "لم يتم التعرف بشكل دقيق",
         calories: 0,
         protein: 0,
         carbs: 0,
@@ -81,7 +92,7 @@ app.post("/analyze-food", async (req, res) => {
     res.json(result);
 
   } catch (error) {
-    console.error(error);
+    console.error("ERROR:", error);
 
     res.status(500).json({
       food: "خطأ في التحليل",
@@ -93,8 +104,11 @@ app.post("/analyze-food", async (req, res) => {
   }
 });
 
+// =====================
+// Server Start (Render ready)
+// =====================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("Nail-Calori Sportif running on port", PORT);
+  console.log("N-Calorie Sportif running on port", PORT);
 });
