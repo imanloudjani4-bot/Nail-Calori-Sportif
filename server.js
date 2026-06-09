@@ -17,14 +17,14 @@ const ai = new GoogleGenAI({
 });
 
 // =====================
-// 🟢 HOME ROUTE
+// HOME ROUTE
 // =====================
 app.get("/", (req, res) => {
-  res.status(200).send("N-Calorie Sportif is running 🚀");
+  res.status(200).send("N-Calorie Sportif PRO 🚀 is running");
 });
 
 // =====================
-// 🟢 ANALYZE FOOD API
+// ANALYZE FOOD API
 // =====================
 app.post("/analyze-food", async (req, res) => {
   try {
@@ -32,7 +32,7 @@ app.post("/analyze-food", async (req, res) => {
 
     if (!process.env.GEMINI_API_KEY) {
       return res.status(500).json({
-        error: "Missing GEMINI_API_KEY in environment variables"
+        error: "Missing GEMINI_API_KEY"
       });
     }
 
@@ -47,11 +47,11 @@ app.post("/analyze-food", async (req, res) => {
         },
         {
           text: `
-أنت خبير تغذية محترف.
+أنت خبير تغذية محترف جدًا.
 
-حلل الطعام الموجود في الصورة.
+حلل الطعام في الصورة بدقة.
 
-أرجع فقط JSON بدون أي شرح:
+أرجع JSON فقط بدون أي نص:
 
 {
   "food": "اسم الطعام",
@@ -65,13 +65,20 @@ app.post("/analyze-food", async (req, res) => {
       ]
     });
 
-    let text = response.text;
+    // =====================
+    // استخراج النص بشكل آمن
+    // =====================
+    let text = "";
 
-    if (typeof text === "function") {
-      text = text();
+    try {
+      text = typeof response.text === "function"
+        ? response.text()
+        : response.text || "";
+    } catch (e) {
+      text = "";
     }
 
-    text = String(text || "")
+    text = String(text)
       .replace(/```json/gi, "")
       .replace(/```/g, "")
       .trim();
@@ -84,7 +91,7 @@ app.post("/analyze-food", async (req, res) => {
       result = JSON.parse(text);
     } catch (err) {
       result = {
-        food: "لم يتم التعرف بدقة",
+        food: "غير معروف",
         calories: 0,
         protein: 0,
         carbs: 0,
@@ -109,10 +116,10 @@ app.post("/analyze-food", async (req, res) => {
 });
 
 // =====================
-// SERVER (Render FIXED)
+// SERVER (Render Ready)
 // =====================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log("N-Calorie Sportif running on port", PORT);
+  console.log("N-Calorie Sportif PRO running on port", PORT);
 });

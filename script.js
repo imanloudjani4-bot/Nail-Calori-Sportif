@@ -1,95 +1,160 @@
-const imageInput = document.getElementById("imageInput");
-const preview = document.getElementById("preview");
-const result = document.getElementById("result");
-const loading = document.getElementById("loading");
+let daily = {
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    meals: []
+};
 
-let selectedFile = null;
+// =====================
+// Load saved data safely
+// =====================
+try {
+    const saved = localStorage.getItem("ncalorie");
 
-imageInput.addEventListener("change", (e) => {
+    if (saved) {
+        daily = JSON.parse(saved);
+    }
+} catch (e) {
+    console.log("Reset corrupted storage");
+    localStorage.removeItem("ncalorie");
+}
 
-  selectedFile = e.target.files[0];
+updateUI();
 
-  if (!selectedFile) return;
+// =====================
+// Save data
+// =====================
+function saveData() {
+    localStorage.setItem("ncalorie", JSON.stringify(daily));
+}
 
-  preview.src = URL.createObjectURL(selectedFile);
-  preview.style.display = "block";
-});
-
+// =====================
+// Upload & Analyze
+// =====================
 document.getElementById("analyzeBtn").addEventListener("click", async () => {
 
-  if (!selectedFile) {
-    alert("اختر صورة أولاً");
-    return;
-  }
+    const file = document.getElementById("imageInput").files[0];
 
-  loading.classList.remove("hidden");
-  result.innerHTML = "";
-
-  const reader = new FileReader();
-
-  reader.onload = async () => {
-
-    try {
-
-      const imageBase64 = reader.result.split(",")[1];
-
-      const response = await fetch(
-        "http://localhost:3000/analyze-food",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            imageBase64
-          })
-        }
-      );
-
-      const data = await response.json();
-
-      loading.classList.add("hidden");
-
-      result.innerHTML = `
-        <div class="card">
-          <div class="card-title">🍽️ الطعام</div>
-          <div class="card-value">${data.food}</div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">🔥 السعرات</div>
-          <div class="card-value">${data.calories} kcal</div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">💪 البروتين</div>
-          <div class="card-value">${data.protein} g</div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">🍞 الكربوهيدرات</div>
-          <div class="card-value">${data.carbs} g</div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">🥑 الدهون</div>
-          <div class="card-value">${data.fat} g</div>
-        </div>
-      `;
-
-    } catch (error) {
-
-      loading.classList.add("hidden");
-
-      result.innerHTML = `
-      <div class="card">
-        ❌ فشل تحليل الصورة
-      </div>
-      `;
-
-      console.error(error);
+    if (!file) {
+        alert("📸 اختر صورة أولاً");
+        return;
     }
-  };
 
-  reader.readAsDataURL(selectedFile);
+    document.getElementById("loading").classList.remove("hidden");
+
+    const reader = new FileReader();
+
+    reader.onload = async function () {
+
+        try {
+            const base64 = reader.result.split(",")[1];
+
+            const res = await fetch("/analyze-food", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ imageBase64: base64 })
+            });
+
+            const data = await res.json();
+
+            document.getElementById("loading").classList.add("hidden");
+
+            // =====================
+            // Clean values safely
+            // =====================
+            const calories = Number(data.calories) || 0;
+            const protein = Number(data.protein) || 0;
+            const carbs = Number(data.carbs) || 0;
+            const fat = Number(data.fat) || 0;
+            const food = data.food || "غير معروف";
+
+            // =====================
+            // Update daily stats
+            // =====================
+            daily.calories += calories;
+            daily.protein += protein;
+            daily.carbs += carbs;
+            daily.fat += fat;
+
+            // Save meal
+            daily.meals.unshift({
+                food,
+                calories
+            });
+
+            // keep last 5 meals only
+            daily.meals = daily.meals.slice(0, 5);
+
+            saveData();
+            updateUI();
+
+        } catch (err) {
+            console.error(err);
+            document.getElementById("loading").classList.add("hidden");
+            alert("❌ حدث خطأ أثناء التحليل");
+        }
+    };
+
+    reader.readAsDataURL(file);
 });
+
+// =====================
+// Reset Day (PRO feature)
+// =====================
+function resetDay() {
+    daily = {
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        meals: []
+    };
+
+    saveData();
+    updateUI();
+
+    alert("🔄 تم إعادة تعيين اليوم");
+}
+
+// =====================
+// Update UI
+// =====================
+function updateUI() {
+
+    const result = document.getElementById("result");
+
+    result.innerHTML = `
+        <h3>🔥 إحصائيات اليوم</h3>
+
+        <div>🔥 السعرات: <b>${daily.calories}</b> kcal</div>
+        <div>💪 البروتين: <b>${daily.protein}</b> g</div>
+        <div>🍞 الكارب: <b>${daily.carbs}</b> g</div>
+        <div>🥑 الدهون: <b>${daily.fat}</b> g</div>
+
+        <hr>
+
+        <h3>🍽 آخر الوجبات</h3>
+
+        ${
+            daily.meals.length > 0
+            ? daily.meals.map(m => `
+                <div>• ${m.food} (${m.calories} kcal)</div>
+            `).join("")
+            : "<p>لا توجد وجبات بعد</p>"
+        }
+
+        <br>
+
+        <button onclick="resetDay()" style="
+            background:red;
+            color:white;
+            padding:10px;
+            border:none;
+            border-radius:8px;
+            width:100%;
+        ">
+            🔄 إعادة تعيين اليوم
+        </button>
+    `;
+}

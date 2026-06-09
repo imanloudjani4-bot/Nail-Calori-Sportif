@@ -3,8 +3,93 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nail-Calori Sportif</title>
-<link rel="stylesheet" href="style.css">
+<title>N-Calorie Sportif PRO</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+body{
+    margin:0;
+    font-family:'Cairo', sans-serif;
+    background: linear-gradient(135deg,#0a0f1c,#111827);
+    color:white;
+}
+
+.container{
+    max-width:500px;
+    margin:auto;
+    padding:20px;
+}
+
+.header{
+    text-align:center;
+    margin-top:20px;
+}
+
+.logo{
+    font-size:40px;
+}
+
+h1{
+    color:#22c55e;
+}
+
+.card{
+    background:#111827;
+    padding:20px;
+    border-radius:15px;
+    margin-top:20px;
+    box-shadow:0 0 20px rgba(0,255,120,0.1);
+}
+
+input{
+    width:100%;
+    margin-top:10px;
+}
+
+button{
+    width:100%;
+    padding:12px;
+    margin-top:15px;
+    border:none;
+    border-radius:10px;
+    background:#22c55e;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#16a34a;
+}
+
+.preview{
+    width:100%;
+    margin-top:10px;
+    border-radius:10px;
+    display:none;
+}
+
+.stats{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-top:15px;
+}
+
+.box{
+    background:#1f2937;
+    padding:10px;
+    border-radius:10px;
+    text-align:center;
+}
+
+.loading{
+    text-align:center;
+    margin-top:15px;
+    color:#22c55e;
+    display:none;
+}
+</style>
 </head>
 
 <body>
@@ -13,38 +98,79 @@
 
     <div class="header">
         <div class="logo">💪</div>
-
-        <h1>Nail-Calori Sportif</h1>
-
-        <p>
-            تحليل ذكي للسعرات والبروتين والكربوهيدرات من صور الطعام
-        </p>
+        <h1>N-Calorie Sportif PRO</h1>
+        <p>تحليل احترافي للسعرات الغذائية</p>
     </div>
 
-    <label class="upload-box">
-        📸 اختر صورة وجبة
-        <input
-            type="file"
-            id="imageInput"
-            accept="image/*"
-            capture="environment">
-    </label>
+    <div class="card">
 
-    <img id="preview">
+        <input type="file" id="imageInput" accept="image/*">
 
-    <button id="analyzeBtn">
-        🔍 تحليل الوجبة
-    </button>
+        <img id="preview" class="preview">
 
-    <div id="loading" class="hidden">
-        ⏳ جاري تحليل الصورة...
+        <button onclick="analyze()">🔍 تحليل الوجبة</button>
+
+        <div class="loading" id="loading">⏳ جاري التحليل...</div>
+
+        <div class="stats" id="stats"></div>
+
     </div>
-
-    <div id="result"></div>
 
 </div>
 
-<script src="script.js"></script>
+<script>
+const input = document.getElementById("imageInput");
+const preview = document.getElementById("preview");
+const loading = document.getElementById("loading");
+const stats = document.getElementById("stats");
+
+input.addEventListener("change", () => {
+    const file = input.files[0];
+    if(!file) return;
+
+    const reader = new FileReader();
+    reader.onload = e => {
+        preview.src = e.target.result;
+        preview.style.display = "block";
+    };
+    reader.readAsDataURL(file);
+});
+
+async function analyze(){
+    const file = input.files[0];
+    if(!file) return alert("اختر صورة");
+
+    const reader = new FileReader();
+
+    loading.style.display = "block";
+    stats.innerHTML = "";
+
+    reader.onload = async function(){
+        const base64 = reader.result.split(",")[1];
+
+        const res = await fetch("/analyze-food",{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({imageBase64: base64})
+        });
+
+        const data = await res.json();
+
+        loading.style.display = "none";
+
+        stats.innerHTML = `
+            <div class="box">🍽 ${data.food}</div>
+            <div class="box">🔥 ${data.calories} kcal</div>
+            <div class="box">💪 ${data.protein}g</div>
+            <div class="box">🍞 ${data.carbs}g</div>
+            <div class="box">🥑 ${data.fat}g</div>
+            <div class="box">⚡ جاهز!</div>
+        `;
+    };
+
+    reader.readAsDataURL(file);
+}
+</script>
 
 </body>
 </html>
