@@ -10,6 +10,9 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "20mb" }));
 
+// طباعة المفتاح للتأكد
+console.log("GEMINI_API_KEY:", process.env.GEMINI_API_KEY);
+
 // =====================
 // Serve Frontend
 // =====================
@@ -57,11 +60,11 @@ app.post("/analyze-food", async (req, res) => {
         },
         {
           text: `
-أنت خبير تغذية محترف جدًا.
+أنت خبير تغذية محترف جداً.
 
 حلل الطعام في الصورة.
 
-أرجع JSON فقط بهذا الشكل:
+أرجع فقط JSON بدون أي شرح:
 
 {
   "food": "string",
@@ -76,12 +79,14 @@ app.post("/analyze-food", async (req, res) => {
     });
 
     // =====================
-    // 🔥 FIX: SAFE EXTRACTION (PRO MAX)
+    // Safe response extraction
     // =====================
     let text = "";
 
     try {
-      text = response.text?.() || "";
+      text = typeof response.text === "function"
+        ? response.text()
+        : response.text || "";
     } catch (e) {
       text = "";
     }
@@ -91,7 +96,7 @@ app.post("/analyze-food", async (req, res) => {
       .replace(/```/g, "")
       .trim();
 
-    console.log("RAW GEMINI:", text);
+    console.log("RAW GEMINI RESPONSE:", text);
 
     let parsed;
 
@@ -103,9 +108,6 @@ app.post("/analyze-food", async (req, res) => {
       parsed = {};
     }
 
-    // =====================
-    // FINAL SAFE OUTPUT (NO undefined EVER)
-    // =====================
     const result = {
       food: parsed.food || "غير معروف",
       calories: Number(parsed.calories) || 0,
