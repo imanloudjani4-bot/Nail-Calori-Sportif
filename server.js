@@ -2,12 +2,18 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json({ limit: "20mb" }));
+
+// =====================
+// Serve Frontend
+// =====================
+app.use(express.static(__dirname));
 
 // =====================
 // Gemini AI Setup
@@ -17,10 +23,10 @@ const ai = new GoogleGenAI({
 });
 
 // =====================
-// HOME ROUTE
+// HOME ROUTE (Frontend)
 // =====================
 app.get("/", (req, res) => {
-  res.status(200).send("N-Calorie Sportif PRO 🚀 is running");
+  res.sendFile(path.join(__dirname, "index.html"));
 });
 
 // =====================
@@ -51,7 +57,7 @@ app.post("/analyze-food", async (req, res) => {
 
 حلل الطعام في الصورة بدقة.
 
-أرجع JSON فقط بدون أي نص:
+أرجع JSON فقط بدون أي شرح:
 
 {
   "food": "اسم الطعام",
@@ -66,7 +72,7 @@ app.post("/analyze-food", async (req, res) => {
     });
 
     // =====================
-    // استخراج النص بشكل آمن
+    // Safe response extraction
     // =====================
     let text = "";
 
