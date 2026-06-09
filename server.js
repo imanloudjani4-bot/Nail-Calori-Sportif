@@ -23,7 +23,7 @@ const ai = new GoogleGenAI({
 });
 
 // =====================
-// HOME ROUTE (Frontend)
+// HOME ROUTE
 // =====================
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
@@ -38,7 +38,11 @@ app.post("/analyze-food", async (req, res) => {
 
     if (!process.env.GEMINI_API_KEY) {
       return res.status(500).json({
-        error: "Missing GEMINI_API_KEY"
+        food: "API Key missing",
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0
       });
     }
 
@@ -55,12 +59,12 @@ app.post("/analyze-food", async (req, res) => {
           text: `
 أنت خبير تغذية محترف جدًا.
 
-حلل الطعام في الصورة بدقة.
+حلل الطعام في الصورة.
 
-أرجع JSON فقط بدون أي شرح:
+أرجع JSON فقط بهذا الشكل:
 
 {
-  "food": "اسم الطعام",
+  "food": "string",
   "calories": 0,
   "protein": 0,
   "carbs": 0,
@@ -72,14 +76,12 @@ app.post("/analyze-food", async (req, res) => {
     });
 
     // =====================
-    // Safe response extraction
+    // 🔥 FIX: SAFE EXTRACTION (PRO MAX)
     // =====================
     let text = "";
 
     try {
-      text = typeof response.text === "function"
-        ? response.text()
-        : response.text || "";
+      text = response.text?.() || "";
     } catch (e) {
       text = "";
     }
@@ -89,21 +91,28 @@ app.post("/analyze-food", async (req, res) => {
       .replace(/```/g, "")
       .trim();
 
-    console.log("Gemini Response:", text);
+    console.log("RAW GEMINI:", text);
 
-    let result;
+    let parsed;
 
     try {
-      result = JSON.parse(text);
+      parsed = JSON.parse(text);
     } catch (err) {
-      result = {
-        food: "غير معروف",
-        calories: 0,
-        protein: 0,
-        carbs: 0,
-        fat: 0
-      };
+      console.log("JSON PARSE FAILED");
+
+      parsed = {};
     }
+
+    // =====================
+    // FINAL SAFE OUTPUT (NO undefined EVER)
+    // =====================
+    const result = {
+      food: parsed.food || "غير معروف",
+      calories: Number(parsed.calories) || 0,
+      protein: Number(parsed.protein) || 0,
+      carbs: Number(parsed.carbs) || 0,
+      fat: Number(parsed.fat) || 0
+    };
 
     res.json(result);
 
@@ -111,7 +120,6 @@ app.post("/analyze-food", async (req, res) => {
     console.error("ERROR:", error);
 
     res.status(500).json({
-      error: "Server error",
       food: "خطأ في التحليل",
       calories: 0,
       protein: 0,
